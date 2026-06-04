@@ -1,0 +1,456 @@
+---
+title: "Housing Market Price Study"
+author: "Jurry Taalib-Deen"
+date: "2026-01-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# 1. Clarifying the Problem and Constraints
+
+## 1.1 The Problem
+
+- The Lucas County Board of Revision (BOR) meets every fiscal year to review the values that were set on properties within the county by the Lucas County Auditor tri-annualy. The Auditor in the last evaluation (2021) used a third party company from Cincinnati to create a model that best describes that value of a property. While I was sitting on the BOR many complaints from professionals that work within the real estate industry, everyday taxpayers, and lawyers sparked a question that was bought up many times under different pretenses: ***"Does the model actually fit the data?"***. This and other concerns were bought to question. Some other questions of interest are:
+
+  - ***Is square footage the best indication of the projected sale of a residential property?***
+
+    - The goal of solving this problem is to help professionals in Lucas county to better assess residential properties so there is a fair market value of it.
+    - 
+
+  - ***Does location have a larger impact on the sale of a residential property, then other variables within our dataset?***
+
+    - The goal of answering this is the same as the previous.
+
+  - ***The age of a house doesn't have a large impact on property sales when controlling for location.***
+
+    - Many of the BOR officers assumed that the year a property was built was causal on the sales price.
+
+- The BOR when assessing property values by state law must use sales within a market area to assess the property value. The issue is that there are many different deed types that show up in our data set, some of which are not what would be considered a "straight-arms length sale" in which we can't use to assess property value. For this reason I will control for this by removing Sheriff Deeds, & Quick Claim Deeds. These sales are for the most part not straight arms length sales. However, in Sec. 3.9 I show that even GW Deed Sales seem to not be real sales because their sale price was between \$0 and \$4,999. From my observations it wasn't impossible for someone to buy a property in Toledo for \$5,000 but rather implausible. Especially, if a happened in 2021. This takes us into another constraint. **Time** plays a huge role in property sales. Section 3.10 shows the sales across the span of time. When creating our model we will control for autocorrelation.
+
+# 2. Loading the Data
+
+We first start by loading the required packages, and the data itself.
+
+```{r}
+#Let's first load all the necessary packages: 
+library(tidyverse)
+library(tidymodels)
+tidymodels_prefer()
+library(tidygeocoder)
+library(stargazer)
+```
+
+```{r}
+# Define the path to the folder containing CSV files
+folder_path <- '/Users/deen/Documents/Education/Data Science/Economic Research/Real Estate Prices/Data'
+
+csv_files <- list.files(path = folder_path, pattern = "\\.csv$", full.names = TRUE)
+
+#I ran into an issue where parid had been assigned different data types across the 72 different tables
+
+coerce_to_char <- function(df) {
+  df[] <- lapply(df, as.character)
+  return(df)
+}
+
+combined_data <- csv_files |> 
+  lapply(read_csv) |> 
+  lapply(coerce_to_char)
+  
+
+final_df <- combined_data |> 
+  reduce(bind_rows) |>  
+  type_convert()
+  
+write.csv(final_df, '/Users/deen/Documents/Education/Data Science/Economic Research/Real Estate Prices/Data.csv')
+
+head(final_df)
+
+```
+
+From what is provided online, we know that commercial properties are represented by values 400 - 499, and residential properties by values 500 - 599, with 500 being residential lots, 510 and 511 being for residential homes, 520s are for duplexes, and 530s are for triplexes or more. When we conduct our analysis later - we will be strictly looking at normal family homes, duplexes and triplexes seperately.
+
+```{r}
+res_df <- final_df |>
+  #Below we will change the names of our variables so the we can easily type them, and understand them
+  rename(tax_district = `tax district`, 
+         land_use = `land use`, 
+         price = `last sale price`, 
+         deed_type = `deed type`,
+         sales_date = `sales date`,
+         appraised_value = `appraised value`
+         ) |> 
+  #Filtering our data to residential homes, and we will control for `fair market value` homes by filtering our data to general warranty homes 
+  filter(deed_type != "QC" & deed_type != "SD", #General warranty deed
+         land_use >= 510 & land_use < 520,
+         price > 4999) |> 
+  mutate(sales_date = lubridate::dmy(sales_date),
+         age = lubridate::year(sales_date) - yearbuilt,
+         deed_type = as.factor(deed_type),
+         yearbuilt = as.factor(yearbuilt),
+         tax_district = as.factor(tax_district),
+         land_use = as.factor(land_use),
+         zip = as.factor(zip),
+         `wall type` = as.factor(`wall type`),
+         stories = as.factor(stories), 
+         )
+
+comm_df <- final_df |> 
+  rename(tax_district = `tax district`, 
+         land_use = `land use`, 
+         price = `last sale price`, 
+         deed_type = `deed type`,
+         sales_date = `sales date`,
+         appraised_value = `appraised value`
+         ) |> 
+  filter(deed_type != "QC" & deed_type != "SD",
+         land_use >= 400 &  land_use <= 499,
+         price > 4999) |> 
+ mutate(sales_date = lubridate::dmy(sales_date),
+         age = lubridate::year(sales_date) - yearbuilt,
+         deed_type = as.factor(deed_type)
+        )
+
+
+res_df
+comm_df
+  
+  
+```
+
+The variables of interest are as follows:
+
+- *tax_district*
+
+- land_use (specifically I am interested in sales that happened between commercial and residential
+
+- owner (I want to see if the majority of buyers or consumers or firms by doing some text analysis)
+
+- Full address (city, state, and zip code included)
+
+- acres
+
+- baths
+
+- bedrooms
+
+- stories
+
+- yearbuilt (I will likely transform this variable into age because the year the property was built is a categorical variable - by transforming it to age it becomes a quantitative discrete variable)
+
+- wall_type (this variable is a catagorical variable in which it describes the building material of the building.
+
+- seller ( I would like to compare the seller to owners for each year and see which proportion of sellers are businesses and which are consumers.)
+
+- price (this is our target variable of interest)
+
+- Deed_type (this variable is important because not every sale describes true market sale. "GW" deed type and "FD" are the best indicators of a true market sale.
+
+- total living area (tla) is assumed to have the largest inference on the target variable.
+
+- appraised value is of interest because it's what the county auditor's model predicted what the value of a property would be.
+
+# 3. Descriptive Statistics & Variable Distributions
+
+## 3.1 Price
+
+### 3.1.1 Price Distribution
+
+```{r}
+options(scipen = 9999)
+
+ggplot(res_df, aes(x = price))+
+  geom_histogram(bins = 40)
+```
+
+We will need to transform our target variable `price` using a log transformation or the YeoJohnson() function later on.
+
+### 3.1.2 Price Descriptive Statistics
+
+```{r}
+res_df |> 
+  summarize(Average_Price = mean(price),
+            Standard_Deviation = sd(price), 
+            Max_Price = max(price), 
+            Min_Price = min(price),
+            .by = stories
+          )
+```
+
+## 3.2 Appraised Value
+
+## 3.2.1 Appraised Value Distribution
+
+```{r}
+
+ggplot(res_df, aes(appraised_value))+
+  geom_histogram(bins = 40)
+```
+
+It seems that the appraised value distribution is almost exactly the same as the last sale price, which could suggest that the appraisers model fits the data.
+
+## 3.2.2 Appraised Value Descriptive Statistics
+
+```{r}
+res_df |> 
+  summarize(Average_Value = mean(appraised_value),
+            Standard_Deviation = sd(appraised_value), 
+            Max_Value = max(appraised_value), 
+            Min_Value = min(appraised_value),
+            .by = stories
+          )
+```
+
+## 3.3 Acres
+
+```{r}
+ggplot(res_df, aes(acres))+
+  geom_histogram(binwidth = 5)
+```
+
+### 3.3.2 Acres Descriptive Statistics
+
+```{r}
+res_df |> 
+  summarize(Average_Acres = mean(acres, na.omit = FALSE),
+            Standard_Deviation = sd(acres), 
+            Max_Value = max(acres), 
+            Min_Value = min(acres),
+            .by = city
+          )
+```
+
+## 3.4 Baths
+
+```{r}
+ggplot(res_df, aes(baths))+
+  geom_histogram()
+```
+
+Our baths variable has a few outliers that we will need to address later.
+
+## 3.5 Bedrooms
+
+```{r}
+ggplot(res_df, aes(bedrooms))+
+  geom_histogram()
+
+```
+
+We can tell from this boxplot that we have many outliers and the averave is around 3 bedrooms. There are some observations that show 0 bedrooms but that is because not all of the properties are residential.
+
+## 3.6 Total Living Area (tla)
+
+```{r}
+
+ggplot(res_df, aes(tla))+
+  geom_histogram()
+```
+
+It seems that we also must transform our tla variable to get it to a standard normal distribution
+
+```{r}
+res_df |> 
+  summarize(Average_tla = mean(tla),
+            Standard_Deviation = sd(tla), 
+            Max_Value = max(tla), 
+            Min_Value = min(tla),
+            .by = stories
+          )
+```
+
+## 3.7 Sale Price - Square Footage - City
+
+```{r}
+library(plotly)
+ggplot(res_df)+
+  geom_point(aes(tla, price, colour = city), size = 1) +
+  geom_smooth(method = "glm")
+
+```
+
+From looking at this chart we can see that there are a lot of values that didn't sale for an actual price, and some property values sold for relatively cheap. The reason for this is that we have some property values that were just pieces of un-buildable parcels, and there are some parcels that were deed transfers but are being picked up by the data as sales. There are also plenty of observations that had sold for under \$1000 - this could be due to not being residential or commercial properties and as well as foreclosures or deed transfers.
+
+Lets take a look at the Sale Price, and Square footage but have it depend upon general warranty (GW) and feudiciary (FD) deeds only.
+
+## 3.8 Sale Price - Sqft - Deed Type
+
+```{r}
+
+ggplot(res_df, aes(tla, price, alpha = 0.05 ))+
+  geom_point()+
+  facet_wrap(~ `deed type` == "GW" | `deed type` == "FD")+
+  scale_x_log10()+
+  scale_y_log10()+
+  labs(title = "Square Footage vs. Sale Price", subtitle = "Non-GW Deeds vs GW & FD Deeds")+
+  xlab("Square Footage")
+```
+
+What is concerning about these scatter plots is that it still shows some observations at zero for GW deeds & FD deeds. Which may suggest that the general thought of GW & FD deeds being more reliable of depicting fair market value (arms length sale) is incorrect. Unless it is true that GW & FD deeds count for majority of the observations.
+
+From this frequency table we can see that FD deed is at the lower middle of all observations and that GW, and QC which stands for Quit Claim deed are the majority of our observations. This would suggest that a large proportion of the "sales" in the county are not actual sales but rather deed transfers between individuals. For example, many quit claims are completed in divorce cases or are completed between family members. Also, this did type doesn't offer protection to the buyer in the case that the title is not a clean title. Our third largest deed type is ST which stands for Survivorship Tenancy deed - which are for incidents of the death of an owner; when there is co-ownership, the death transfers the full deed to the other owner - avoiding the probate process. We still aren't sure where majority of our zeros are coming from, which is important in understanding because when we transform our data these zeros can cause issues. Also, we are interested strictly in fair market sales because that is how the county BOR makes it's decisions.
+
+Let's create a scatter plot matrix to get a better idea of what our data looks like.
+
+```{r}
+ggplot(final_df, aes(`last sale price`)) + 
+  geom_dotplot()+
+  facet_wrap(~ `deed type`, scales = "free")
+
+```
+
+From this matrix it seems that just about every deed type has observations at 0 except for the few that don't have many observations.
+
+## 3.9 Time Series of Sales
+
+```{r}
+res_df |> 
+  ggplot(aes(sales_date, price))+
+  geom_line()+
+  scale_x_date(date_breaks = '1 year', 
+               labels = date_format("%m-%y"))
+```
+
+# 4. Feature Engineering
+
+## 4.1 Dealing with Missing Values
+
+Let's start by creating a heat map so we can see which values are missing and from what variables. Than we will be able to impute some of these missing values.
+
+```{r}
+res_df |> 
+  is.na() |> 
+  reshape2::melt() |> 
+  ggplot(aes(Var2, Var1, fill = value)) +
+  geom_raster()+
+  coord_flip()+ 
+  scale_y_continuous(NULL, expand = c(0,0)) + 
+  scale_fill_grey(name = "", 
+                  labels = c("Present", "Missing"))+
+  xlab("Observations")+
+  theme(axis.text.y = element_text(size = 8))
+```
+
+From looking at this heat map - I would assume a lot of our missing values are due to commercial properties, and other non - residential properties.
+
+Let's start by seperating our data by land use, that way we can analyze sales by residential and commercial properties. Let's first see what unique land use values exist:
+
+## 4.2 Splitting the Data
+
+### 4.2.1 Residential Data
+
+```{r}
+#Lets Split our data into test and training sets using the rsample package
+
+set.seed(123) #for reproducibility 
+split_sales <- initial_split(res_df, prop = 0.7)
+
+train_sales <- training(split_sales)
+test_sales <- testing(split_sales)
+
+train_sales
+```
+
+The way we want to think of our model is as follows:
+
+```{r}
+prop_recipe <- recipe(price ~ ., data = train_sales) |> 
+  step_rm(`date of closing`, deed_type, zoning) |> 
+  step_zv(all_nominal(), all_numeric_predictors()) |> 
+  step_nzv(all_nominal(), all_numeric_predictors()) |>
+  step_impute_knn(all_numeric()) |> 
+  step_YeoJohnson(all_numeric(), -yearbuilt) |> 
+  step_pca(all_numeric_predictors()) |> 
+  step_center(all_numeric(), -all_outcomes()) |> 
+  step_scale(all_numeric(), -all_outcomes()) |> 
+  step_unknown(all_nominal())
+
+#Run the steps using training data: 
+pr_res <- prep(prop_recipe, training = train_sales)
+
+
+#Apply estimates to new data 
+data_model <- bake(pr_res, new_data = NULL)
+data_model
+```
+
+```{r}
+
+#To be able to interpret our results we will use a lm() first 
+ln_model <- linear_reg() |> 
+  set_engine("glm") |> 
+  translate()
+  
+```
+
+```{r}
+glm_fit <- ln_model |> 
+  fit(price ~ PC1 + PC2 + PC3 + PC4 + PC5 + tax_district + `wall type` + stories, data = data_model)
+
+tidy(glm_fit)
+```
+
+# 5. Model Selection
+
+Let's recall our initial hypotheses:
+
+- ***Square footage is the best indication of the projected sale of a residential property***
+
+  - The goal of solving this problem is to help professionals in Lucas county to better assess residential properties so there is a fair market value of it.
+  - $$H_{0}: \beta_{1} = \beta_{k} = 0 \\ H_{A}: \beta_{1} \neq \beta_{k} \neq 0$$
+
+- ***Location is not the most deterministic causal variable on the sale of a residential property***
+
+  - The goal of answering this is the same as the previous.
+  - $$H_{0}: \beta_{L} < \beta_{k} \ where \ L \ represents \ all\ observations \ of \ location \ and \ k \ all \ observations \ of \ the \ other \ coefficients \\ H_{A}: \beta_{L} > \beta_{k} \ where \ L \ represents \ all\ observations \ of \ location \ and \ k \ all \ observations \ of \ the \ other \ coefficients $$
+
+- ***The age of a house does not have a statistically significant effect on a residential property's sale price.***
+
+  - Many of the BOR officers assumed that the year a property was built was causal on the sales price.
+
+- ***The Expected mean of the sale price is about the same as the expected mean of the appraised value.***
+
+  - Per the Ohio Revised code BOR officers can not use equalization to determine the fair market value of a home. Meaning they can not compare the auditors value for one property to that of another due to us not being able to see variables in the house - ie condition, negative externalities.
+
+- **The proportion of firms buying residential properties to consumers buying residential properties is greater than 0.5.**
+
+  - During BOR many people complained about companies harassing them to sell their property. I also had saw in the data large amounts of parcels being bought by companies in single sales.
+
+  - $$H_{0}: \frac{\bar x_{firms_{t}}}{\bar x_{consumers_{t}}} > 0.5 \\ H_{A}: \frac{\bar x_{firms_{t}}}{\bar x_{consumers_{t}}} < 0.5$$
+
+### Conclusion
+
+After using clustered standard errors on my test sets in which I clustered my errors around the tax district, the model was able to show that at least one of our parameters are not equal to zero. In terms of choosing our model for prediction and inference, I will be using the testlm1 model mainly for the reason that it doesn't include the longitude and latitude variables - which I can't analyze in my regression because R doesn't interpret it as a spatial weight. There are packages like "sf" and "stars" that allow for this. However, it requires a deeper understanding of spatial statistical analysis.
+
+Going back to our null hypotheses, we can see that sqft does not in fact account for the majority of the variance in the price of a house. But rather location does. Square footage is secondary to the location in terms of causal inference. To better interpret these variables lets see which tax district they are being compared to.
+
+We can now see that our categorical variables are being compared to all the residential properties that are within the "Toledo City - Toledo CSD (City School District)". We can see that houses in Ottawa Hills sale for 160% more than homes in the Toledo City School District. Which makes sense and confirms many of the observations that I had. Homes in Ottawa hills sale at higher prices compared to every district in Lucas County. There is only one township in the county that sales for less compared to homes in the Toledo CSD; Harding TWP - Toledo CSD see a 34% decrease in the sales price. It is not as statistically significant as all of the other categories. We can be 90% certain that we would see a 34% decrease in the sales price within that township.
+
+The tax and school district that a property falls in is the most causal variable within this data set. After the tax district is the square footage - for a 1% increase in the square footage there is a 59% increase in the price. For every 1% increase in acreage there is a 21.5% increase in the the price.
+
+For interpreting the stories of a house we are comparing it to a "BI-LEVEL". A one story house with an attic is predicted to sale for 11.2% more than a bi-level, and a three story home is predicted to sale for 41.6% more than a bi-level. The other categories in the "stories" variable are not statistically significant.
+
+What would be surprising to some of the people that come to BOR is that the amount of bathrooms and bedrooms that a house has is not statistically significant in determining the sales price. Something that I would assume is that the layout of a house could have an effect on the price, however it isn't observed in our data set. Lastly, when accounting for autocorrelation we can see that with each year the price of properties increases, with a larger increase in sales prices from 2022 to 2023.
