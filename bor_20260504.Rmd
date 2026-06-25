@@ -1,0 +1,1051 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*.
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+Let's create a vector of all the properties based on the parcel id
+
+```{r}
+bor <- tibble(
+  parid = c(2050071, 3886802, 3894329, 3889887, 3889541, 3888293, 1502047, 0101327, 6594167, 1456007, 1630131, 5211904, 0454017),
+  time = c( 0900, 0930, 1000, 1030, 1100, 1130, 1300, 1330, 1400, 1430, 1500, 1530, 1600), 
+  appraised_value = c(70900, 581700, 639900, 647700, 443300, 435800, 47300, 145000, 476700, 244700, 173100, 348800, 65600), 
+  requested_amount = c(55000, 475000, 498300, 490000, 375000, 375000, 30000, 122000, 427000, 195000, 140000, 312000, 65600)
+)
+
+
+bor
+```
+
+```{r}
+bor <- bor |> 
+  mutate(diff_in_price = appraised_value - requested_amount)
+bor
+```
+
+```{r}
+bor_0900 <- read_csv("/Users/deen/Downloads/Report-4.csv") |> 
+  filter(tla > 1400 & tla < 1750, stories == "ONE STORY WITH ATTIC")
+bor_0900
+
+bor_0900 |> 
+  mutate(average_price = mean(`last sale price`), 
+         average_tla = mean(tla), 
+         )
+```
+
+```{r}
+bor_1000 <- read_csv("/Users/deen/Downloads/Report-6.csv") 
+bor
+outlier_price <- outliers::outlier(bor_1000$`last sale price`)
+outlier_price
+
+```
+
+```{r}
+bor_1000 <- bor_1000 |> 
+  filter(tla > 2900 & tla < 3300, 
+         `last sale price` != 0, 
+         `last sale price` != 1050000, 
+         `last sale price` != 75000)
+
+bor_1000 |> 
+  lm()
+```
+
+```{r}
+mean(bor_1000$`last sale price`)
+
+
+```
+
+### BOR Case 202520217 - Issa Khalil
+
+```{r}
+bor_1030 <- read_csv("/Users/deen/Downloads/Report-5.csv")
+```
+
+```{r}
+outliers::outlier(bor_1030$`last sale price`)
+bor_1030 <- bor_1030 |> 
+  filter(tla > 3200 & tla < 3600, 
+         `last sale price` -0 & `last sale price` -1350000)
+bor_1030
+```
+
+Citizen states that based on the comparable in the neighborhood he 3936 Brothridge DR
+
+3644 Boulder Ridge Dr - \$450,000
+
+3544 Deer Creek Dr - \$450000
+
+2025 Boulder Ridge - \$495000
+
+7336 Woodstone DR - \$505000
+
+7920 Windsorwood CT - 590000
+
+```{r}
+mean(bor_1030$`last sale price`)
+mean(bor_1030$tla)
+var(bor_1030$`last sale price`)
+```
+
+```{r}
+sqrt(var(bor_1030$`last sale price`))
+```
+
+# BOR JUNE 16TH 2026
+
+## 1. 0900: 78-50587
+
+Property was built in 2017, has 2,434 sqft, Grade of B, 3 bedrooms, 2 baths, Wall Type Metal/Vinyl, attached 2 car garage, and a full basement.
+
+```{r}
+bor_data_model <- 
+  res_sales |> 
+  select(SaleAmount,
+         MktArea,
+         SalesDate,
+         Parcel,
+         TLA,
+         Acres,
+         YearBlt,
+         MailAddress,
+         City,
+         State,
+         Zip,
+         Grade,
+         Landuse,
+         ZONING,
+         Cond,
+         GarageType,
+         GarageSqFt,
+         BsmtType,
+         FullBath,
+         HalfBath,
+         Occupancy,
+         Stories,
+         Wall,
+         BedRms,
+         Frontage,
+         Depth, 
+         Rooms, 
+         Lotsize,
+         BaseAtt,
+         BaseBsmt,
+         HVAC, 
+         DeedType,
+         TD,
+         STREET,
+         TRAFFIC, 
+         UTIL
+                
+      ) 
+
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2023R",
+         SaleAmount > 1, 
+         TLA >= 2200 & TLA < 2700)
+
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2023R",
+         SaleAmount > 1, 
+         TLA >= 2200 & TLA < 2700) |> 
+  mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount),
+         .after = SalesDate
+         ) 
+```
+
+```{r}
+marketbor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2023R",
+         SaleAmount > 1, 
+         YearBlt != "0"
+         )
+
+
+```
+
+## 2. 0930: 78-55754
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2600 & TLA < 2900
+         ) 
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2400 & TLA < 2900
+         ) |>  
+  mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2400 & TLA < 2900
+         ) |>  
+  mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+## 3. 1000: 38-40928
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2702R",
+         SaleAmount > 1, 
+         TLA >= 3000 & TLA < 3700
+         ) 
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2702R",
+         SaleAmount > 1, 
+         TLA >= 3000 & TLA < 3700
+         ) |>  
+  mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2702R",
+         SaleAmount > 1, 
+         TLA >= 3000 & TLA < 3700
+         ) |>  
+  mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt) |> 
+  view()
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2702R",
+         SaleAmount > 1, 
+         TLA >= 2800
+         ) |>  
+  
+```
+
+## 4. 1030: 78-61107
+
+`{r}mutate(Average_Sale = mean(SaleAmount),}          Sd_Sale = sd(SaleAmount),           Average_TLA = mean(TLA),          Average_YearBlt = mode(YearBlt),           .after = YearBlt) |>    view() bor_data_model |>    filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026,           MktArea == "2008R",          SaleAmount > 1,           TLA >= 1000 & TLA < 1500          ) |>    view()`
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2008R",
+         SaleAmount > 1, 
+         TLA >= 1000 & TLA < 1500
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2008R",
+         SaleAmount > 1, 
+         TLA >= 1000 & TLA < 1500
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt) |> 
+  view()
+```
+
+## 5. 11:30 - 78-67174
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2700 & TLA < 3200
+         )
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2700 & TLA < 3200
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1 & SaleAmount < 800000
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2700 & TLA < 3200
+         ) |> 
+   mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt) |> 
+  view()
+```
+
+## 6. 1330 78-77311
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2200 & TLA < 2600
+         )
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2200 & TLA < 2600
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+## 7. 1400: 7877467
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2600 & TLA < 2900
+         )
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 2600 & TLA < 2900
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_mod_1 <- bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1
+         ) |>  
+  select(SaleAmount, 
+                MktArea,
+                SalesDate,
+                Parcel, 
+                TLA,
+                Acres,
+                Zip,
+                Grade,
+                Landuse,
+                ZONING,
+                Cond,
+                GarageType,
+                BsmtType, 
+                FullBath,
+                HalfBath,
+                Stories,
+                Wall,
+                YearBlt, 
+                BedRms,
+                Frontage,
+                Depth, 
+                Rooms, 
+                Lotsize,
+                BaseAtt,
+                BaseBsmt,
+                HVAC,
+                DeedType, 
+                TD,
+                STREET,
+                TRAFFIC, 
+                UTIL )
+
+ols_mod <- lm(log(SaleAmount) ~ TLA + YearBlt + year(SalesDate) + as.factor(Wall) + as.factor(HVAC), data = bor_mod_1)
+
+stargazer(ols_mod, type = "text")
+```
+
+## 8. 79-73473
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 1, 
+         TLA >= 2100 & TLA < 2500
+         )
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 1, 
+         TLA >= 2100 & TLA < 2600
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+ 
+  geom_point()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 1, 
+         TLA >= 2100 & TLA < 2700
+         ) |> 
+   mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt)
+  
+```
+
+# BOR JUNE 17TH 2026
+
+## 1. PARCEL 78-67512
+
+This parcel is 3,489 SQFT, Grade of A (8)
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 3200 & TLA < 3600
+        
+         ) |> 
+  mean(SaleAmount)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1, 
+         TLA >= 3200 & TLA < 3600
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+         Grade_Average = mean(Grade), 
+         TLA_Average = mean(TLA), 
+         .after = TLA )
+```
+
+```{r}
+
+```
+
+## 2. Parcel 7884287
+
+```{r}
+mod_2 <- bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2016R",
+         SaleAmount > 1
+        
+         )
+
+mod_2
+```
+
+```{r}
+ols_mod_2 <- lm(log(SaleAmount) ~ TLA + YearBlt + year(SalesDate) + as.factor(Wall) + as.factor(HVAC) + as.factor(Grade) + as.factor(Cond) + as.factor(GarageType) + as.factor(BsmtType) + as.factor(Stories) + as.factor(Wall) + as.factor(TRAFFIC) , data = mod_2)
+
+stargazer(ols_mod_2, type = "text")
+```
+
+```{r}
+ols_mod_2 <- lm(log(SaleAmount) ~ TLA + YearBlt + year(SalesDate) + as.factor(Cond), data = mod_2)
+```
+
+## 3. 79-72107
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2007R",
+         SaleAmount > 1
+        
+         ) 
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2007R",
+         SaleAmount > 1, 
+         TLA > 2200 & TLA > 2700
+        
+         ) |> 
+   mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt)
+  
+  
+```
+
+# BOR JUNE 23RD 2026
+
+## 1. 0930: 6519204
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2404R",
+         SaleAmount > 1,
+         TLA > 1000 & TLA < 1500
+        
+         ) 
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2404R",
+         SaleAmount > 1,
+         TLA > 1000 & TLA < 1500
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount),
+         Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = mode(YearBlt), 
+         .after = YearBlt,)
+  
+```
+
+## 2. 1000:
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "3103R",
+         SaleAmount > 1,
+         TLA > 800 & TLA < 1000
+        
+         )
+```
+
+## 3. 1030: 6546827
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2406R",
+         SaleAmount > 1,
+         Acres >= 5
+  ) |> 
+  view()
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2406R",
+         SaleAmount > 1,
+         TLA >= 1200 & TLA <=1700
+  )
+```
+
+## 4. 1130: 7971191
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 1,
+         TLA > 2600 & TLA < 3200,
+         YearBlt >= 1991 & YearBlt <= 1999
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+options(scipen = 9999)
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 1,
+         TLA > 2600 & TLA < 3200,
+        
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+## 5. 1330: 1405461
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 185000, 
+         YearBlt > 2020
+        
+         ) |> 
+mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt) 
+```
+
+## 
+
+6.  1400: 79-09081
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2005R",
+         SaleAmount > 1,
+         TLA >= 3000 & TLA <= 3400,
+         YearBlt >= 2005 & YearBlt <= 2021
+        
+         ) |> 
+mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt) 
+```
+
+## 
+
+7.  1430: 79-72312
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 1,
+         TLA >= 2800 & TLA <= 3100,
+         YearBlt >= 1997 & YearBlt <= 2003
+        
+         ) |> 
+mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt) 
+```
+
+## 
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 1,
+         TLA >= 2800 & TLA <= 3100,
+         YearBlt >= 1997 & YearBlt <= 2003
+        
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+## 8. 1530: 84-22364
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "1012R",
+         SaleAmount > 1,
+         TLA >= 1100 & TLA <= 1300
+        
+         ) |> 
+mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt) 
+```
+
+## 
+
+9.  1600: 79-71600
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 185000,
+         TLA >= 1900 & TLA <= 2100,
+         YearBlt <= 2003
+        
+         ) |> 
+mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 185000
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+c_mod <- bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2002R",
+         SaleAmount > 185000
+         ) 
+
+glm(SaleAmount ~ TLA + as.factor(Yearblt) + as.factor(Grade) + as.factor(Wall), data = c_mod)
+```
+
+# BOR JUNE 25TH 2026
+
+## 1. 0900: 8811361
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "1805R",
+         SaleAmount > 1, 
+         TLA > 0
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "1805R",
+         SaleAmount > 1, 
+         TLA > 0
+        
+         ) |> 
+  ggplot(aes(SalesDate, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "1805R",
+         SaleAmount > 1, 
+         TLA > 0
+        
+         ) |> 
+  ggplot(aes(TLA, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+## 2. 0930: 44-91181
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "1507R",
+         SaleAmount > 120000, 
+         TLA > 0
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "1507R",
+         SaleAmount > 120000, 
+         TLA >= 2000 & TLA <= 2700
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+## 3. 1000: 79-74300
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2019R",
+         SaleAmount > 1, 
+         TLA > 0
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2019R",
+         SaleAmount > 1 & SaleAmount < 900000, 
+         TLA >1800, 
+         YearBlt <= 2010
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2019R",
+         SaleAmount > 1 & SaleAmount < 580000, 
+         TLA >= 2800 & TLA <= 3500, 
+         YearBlt <= 2010
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+x = 476611
+y = 507083
+
+print((x+y)/2)
+```
+
+## 3. 1030: 78-44831
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2015R",
+         SaleAmount > 1, 
+         TLA >= 2900 & TLA <= 3500,
+        
+         ) |> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2015R",
+         SaleAmount > 1, 
+         TLA >= 2900 & TLA <= 3500,
+        
+         ) |> 
+ ggplot(aes(YearBlt, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2015R",
+         SaleAmount > 1, 
+         TLA >= 2900 & TLA <= 3500,
+         YearBlt >= 1950 & YearBlt <= 1985
+        
+         )|> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+x = 441062.5
+y = 3284.5
+
+z = x/y
+
+z
+```
+
+```{r}
+3288 * z
+```
+
+## 4. 1100: 79-10027
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2005R",
+         SaleAmount > 1, 
+         TLA >= 3400 & TLA <= 3850
+        
+         )|> 
+  mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2005R",
+         SaleAmount > 1, 
+         TLA >= 3400 & TLA <= 3850
+        
+         ) |> 
+  ggplot(aes(YearBlt, SaleAmount))+
+  geom_line()+
+  geom_smooth(method = "lm")
+```
+
+```{r}
+bor_data_model |> 
+  filter(year(SalesDate) >= 2022 & year(SalesDate) < 2026, 
+         MktArea == "2005R",
+         SaleAmount > 1, 
+         TLA >= 3400 & TLA <= 3850,
+         YearBlt >= 1990 & YearBlt <= 2000
+        
+         ) |> 
+ mutate(Average_Sale = mean(SaleAmount), 
+          Sd_Sale = sd(SaleAmount), 
+         Average_TLA = mean(TLA),
+         Average_YearBlt = median(YearBlt), 
+         .after = YearBlt)
+```
+
+```{r}
+avg_sqft <- 592500/3616.5
+avg_sqft
+
+```
+
+```{r}
+3736 * avg_sqft
+```
+
+## 5. 1300:
